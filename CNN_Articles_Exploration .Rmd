@@ -1,0 +1,230 @@
+---
+title: "Exploring Opioid crisis "
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+
+```
+
+
+```{r Create dfs}
+#complete data frame 
+df <- read.csv('/Users/aoaks/Desktop/BIO\ 22/Final\ Project\ /archive/CNN_Articels_clean_2/CNN_Articels_clean.csv')
+head(df)
+#only health category 
+health_df <- df[df$Category=="health",]
+#much smaller/managable set, with 557 articles 
+dim(health_df)
+#only news category, all countries, maybe do a comparison here 
+news_df <- df[df$Category=="news",]
+#subset but larger than health_df,18077
+dim(news_df)
+#news with us section is US news,2119
+us_news_df <- news_df[news_df$Section == "us",]
+dim(us_news_df)
+
+#writing csvs 
+#write.csv(health_df,"health_articles.csv", row.names = FALSE)
+#write.csv(us_news_df,"us_news_articles.csv", row.names = FALSE)
+#write.csv(news_df,"news_articles.csv", row.names = FALSE)
+```
+
+```{r visualizations}
+#visualize the categories of the entire df
+ggplot(data=df, aes(x=Category)) + geom_bar(col = 'white',fill = 'dodgerblue4')+ ggtitle('Categories of the Articles')
+#what is vr? only appears in 5 cases, not sure what the connection is, remove for visual
+df <-df[!(df$Category=="vr"),]
+ggplot(data=df, aes(x=Category)) + geom_bar()
+#all the sections that contain the news 
+ggplot(data=news_df, aes(x=Section)) + geom_bar() + scale_x_discrete(guide = guide_axis(n.dodge=3))
+#lets eliminate all the ones that are barely used for a better visual 
+table(news_df$Section)
+
+new<- news_df %>% group_by(Section) %>% filter(n() > 50)
+ggplot(data=new, aes(x=Section)) + geom_bar(col = 'white',fill = 'dodgerblue4')+ ggtitle('Most Frequent Sections of the News Articles')
+#europe completely overwhelms the others, makes sense... 
+#lets only use the US category of the news and should we combine the health into one df 
+#lets see if all the health articles have to do with the US before we combine them 
+us_mentioned <- length(grep("US", health_df$Keywords)) + length(grep("us", health_df$Keywords))
+us_mentioned 
+#so about 125 out of 557 include mention of the US, plus health is universal so we should include them
+
+#lets see how many articles we've included across the years 
+
+years <- c('2011','2012','2013','2014','2015','2016','2017','2018','2019','2020')
+us_news_articles <- NULL
+health_articles <- NULL
+total_year <- NULL 
+for (i in 1:10){
+  us_news_articles[i] <- length(grep(years[i], us_news_df$Date.published))
+  health_articles[i] <- length(grep(years[i], health_df$Date.published))
+  total_year[i] <- us_news_articles[i] + health_articles[i]
+}
+sum(total_year)
+#Important dates for the Opioid crisis:
+#2017 declared a public health emergency 
+#2016 the most deaths from opioid crisis , increase in the amount of the hosptilizations after 
+#2019 CDC received millions 
+
+
+year <- data.frame(years,us_news_articles,health_articles,total_year)
+year$years <- as.numeric(year$years)
+
+pie(year$total_year, labels = year$years, main = 'CNN Artcles per Year',col = rainbow(length(year$years)))
+
+
+
+opioid_terms <- c('opioids','opioid', 'opioid crisis','OxyContin','heroine','Vicodin','morphine','methadone','Fentanyl',
+                  'acute pain','chronic pain','Chronic pain','Acute pain',
+                  'Drug misuse', 'drug misuse','drug addiction','Drug addiction',
+                  'Methamphetamine','overdose','opioid addiction')
+
+us_news_op_articles <- NULL
+health_op_articles <- NULL
+total_op <- NULL 
+for (i in 1:length(opioid_terms)){
+  us_news_op_articles[i] <- length(grep(opioid_terms[i], us_news_df$Article.text))
+  health_op_articles[i] <- length(grep(opioid_terms[i], health_df$Article.text))
+  total_op[i] <- us_news_op_articles[i] + health_op_articles[i]
+}
+
+opioid_term_count <- data.frame(opioid_terms,us_news_op_articles,health_op_articles,total_op)
+opioid_term_count
+barplot(height=opioid_term_count$total_op,names.arg = opioid_terms,cex.names=0.8,)
+
+
+```
+
+```{r tokens}
+#reading in dataset after tokenization
+health_token <- read.csv('/Users/aoaks/Desktop/BIO\ 22/Final\ Project\ /archive/CNN_Articels_clean_2/NEW.csv')
+```
+
+```{r Opioid articles}
+
+for (i in 1:length(opioid_terms)){
+
+  print(grep(opioid_terms[i], health_df$Article.text))
+}
+
+#save the index of the health articles that contain opioid terms
+index <- c(34,53,69,93,114,321,323,392,408,3,34,39,53,69,93,114,321,322,323,392,407,408,488,
+69,114,321,323,408,34,69,93,469,69,93,39,41,69,93,149,323,554,69,93,279,323,392,53,69,93,321,
+34,69,93,146,175,223,476,546,322,1,3,34,39,53,69,93,114,161,192,298,322,358,392,408,34,39,69)
+
+#how many are unqiue, ie how many articles with opioid terms
+unique(index)
+#29 articles that are opioid in health 
+length(unique(index))
+
+typeof(index)
+list<- as.list(index)
+#opioid aricles from the US news data frame, not used in our analysis but coul be helpful 
+for (i in 1:length(opioid_terms)){
+   print(grep(opioid_terms[i], us_news_df$Article.text))
+}
+#opioid articles 
+index2 <- c(359,900,938,1000,1173,1250,1759,39,195,211,330,359,373,448,634,853,854,900,927,938,994,995,1000, 1051,1173,1250,1251,1464,1528, 1623, 1714, 1759,39,  211,  330,  373,  634,  994,  995, 1251, 1714,211,  634,  994,  995, 1420,83,  669, 1022, 1277,1211,195,  900,  938, 1415, 1420, 1528,900,195,  938 ,1173, 1528, 2071,
+994,  995, 1250,455,  484,  567,  696,  977, 1464, 1686,413, 1173, 1334,195,  201,  334,  356,  363,  364,  365,  373,  448,  900,  938,  977,  994, 1027, 1173, 1211, 1250, 1359, 1528, 1600,1623, 1714, 2071, 2073,
+853,  854 , 900 , 994, 1000, 1464 ,1759)
+#US news opioid articles 
+unique(index2)
+#51 US news opioid articles 
+length(unique(index2))
+
+length(unique(index2))+length(unique(index))
+#80 articles about opioids in total across both data sets 
+
+#indexes of opioid articles saved
+indexx<- unique(index)
+#create new index for health df
+health_df['index'] <- 1:557
+op_articles <- health_df[health_df$index %in% indexx, ]
+#save only the titles 
+op_titles <- op_articles$Headline
+op_titles
+#opioid article titles 
+opioid_article_titles <- data.frame(op_titles)
+#export
+#write.csv(opioid_article_titles,"Opioid_Article_Titles.csv", row.names = FALSE)
+```
+
+```{r Opioid articles by year}
+#Opioid articles by year 
+for (i in 1:10){
+  print(grep(years[i], op_articles$Date.published))
+}
+print(years)
+print(op_by_year)
+
+op_by_year_art <- data.frame(years,op_by_year)
+
+pie(op_by_year_art$op_by_year, labels = op_by_year_art$years, main = 'CNN Opioid Artcles per Year in Health Section',col = rainbow(length(op_by_year_art$years)),radius = 1)
+
+#include the titles, include where the titles fall in timeline, show the change 
+
+
+op_articles <- op_articles[-c(1,12)]
+op_articles$index <- 1:nrow(op_articles)
+index2 <- c(5,7,8,18,20,22,27)
+index1 <- c(29,12,28)
+index3 <- c(4,16,21)
+index4 <- c(3,15,17,19,25)
+index5 <- c(10,11,13,23,24)
+#the articles in 2020-2022 are all mainly about covid so dont include in word cloud
+#saving separated by year for word clouds
+op_articles_201114 <- op_articles[op_articles$index %in% index1, ]
+op_articles_201114$text <- op_articles_201114$Article.text
+write.csv(op_articles_201114,"op_articles_2011_to_2014.csv", row.names = FALSE)
+
+op_articles_2017 <- op_articles[op_articles$index %in% index2, ]
+op_articles_2017$text <- op_articles_2017$Article.text
+write.csv(op_articles_2017,"op_articles_2017.csv", row.names = FALSE)
+
+op_articles_2016 <- op_articles[op_articles$index %in% index3, ]
+op_articles_2016$text <- op_articles_2016$Article.text
+write.csv(op_articles_2016,"op_articles_2016.csv", row.names = FALSE)
+
+op_articles_2018 <- op_articles[op_articles$index %in% index4, ]
+op_articles_2018$text <- op_articles_2018$Article.text
+write.csv(op_articles_2018,"op_articles_2018.csv", row.names = FALSE)
+
+op_articles_2019 <- op_articles[op_articles$index %in% index5, ]
+op_articles_2019$text <- op_articles_2019$Article.text
+write.csv(op_articles_2019,"op_articles_2019.csv", row.names = FALSE)
+
+
+
+
+
+
+```
+
+```{r US article sub}
+#Subset of US articles that have Opioid data, could be used in future work 
+for (i in 1:length(opioid_terms)){
+  print(grep(opioid_terms[i], us_news_df$Article.text))
+}
+usindex <- c(359,900,938, 1000, 1173, 1250, 1759,
+             39,195,211,330,359,  373,  448,  634,  853,  854,  900,  927,  938,  994,  995, 1000, 1051, 1173,
+             1250, 1251,1464, 1528, 1623, 1714, 1759,39,  211,  330,  373,  634,  994,  995, 1251, 1714,211,634,
+             994,  995, 1420,83,  669, 1022, 1277,1211,195 , 900,  938, 1415, 1420, 1528,900,195,  938, 1173,
+             1528 ,2071,994,  995, 1250,455 , 484,  567,  696,  977, 1464 ,1686,413, 1173, 1334,195,  201,  334,
+             356 , 363 , 364 , 365 , 373,  448,  900 , 938,  977 , 994 ,1027, 1173, 1211, 1250, 1359, 1528,
+             1600,1623 ,1714, 2071, 2073,853 , 854 , 900 , 994 ,1000, 1464 ,1759)
+usindex<- unique(usindex)
+us_news_df$index <- 1:nrow(us_news_df)
+us_opioid_articles <- us_news_df[us_news_df$index %in% usindex, ]
+`%!in%` <- Negate(`%in%`)
+us_noto_articles <- us_news_df[us_news_df$index %!in% usindex, ]
+rando <- sample(1:2068,51)
+us_noto_articles$index <- 1:nrow(us_noto_articles)
+us_noto_articles1 <- us_noto_articles[us_noto_articles$index %in% rando, ]
+
+write.csv(us_opioid_articles,"US_opioid_articles.csv", row.names = FALSE)
+write.csv(us_noto_articles1,"US_not_opioid_articles.csv", row.names = FALSE)
+```
